@@ -11,11 +11,13 @@ dependencies = [
     "pydantic>=2.12.5",
     "scikit-learn>=1.8.0",
     "uvicorn>=0.41.0",
+    "xgboost>=3.2.0",
 ]
 
 [dependency-groups]
 dev = [
     "coverage>=7.13.4",
+    "jupyterlab>=4.5.4",
     "locust>=2.43.3",
     "matplotlib>=3.10.8",
     "mockito>=1.5.5",
