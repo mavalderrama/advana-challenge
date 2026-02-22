@@ -1,16 +1,16 @@
-import pandas as pd
-
-from typing import Tuple, Union, List
-import skops.io as sio
-from pathlib import Path
-import numpy as np
-from sklearn.linear_model import LogisticRegression
-from datetime import datetime
-import sklearn
-from sklearn.pipeline import Pipeline
 import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Final, List, Tuple, Union
 
-TOP_10_FEATURES = [
+import numpy as np
+import pandas as pd
+import sklearn
+import skops.io as sio
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+
+TOP_10_FEATURES: Final[list[str]] = [
     "OPERA_Latin American Wings",
     "MES_7",
     "MES_10",
@@ -23,6 +23,7 @@ TOP_10_FEATURES = [
     "OPERA_Copa Air",
 ]
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +31,7 @@ class DelayModel:
     def __init__(self):
         self._model = None  # Model should be saved in this attribute.
         self._root_path = Path(__file__).parent.parent
-        model_path = self._root_path / "artifacts/lr-flight-delay-model.skops"
+        model_path = self._root_path / "artifacts" / "lr-flight-delay-model.skops"
         unknown_types = sio.get_untrusted_types(file=model_path)
         self._artifact = sio.load(model_path, trusted=unknown_types)
         self._metadata = self._artifact["metadata"]
@@ -53,6 +54,28 @@ class DelayModel:
         )
         return data[[target_column]]
 
+    @staticmethod
+    def _preprocess(
+        data: pd.DataFrame,
+        top_10_features: list[str] | None = None,
+    ) -> pd.DataFrame:
+        features = pd.concat(
+            [
+                pd.get_dummies(data["OPERA"], prefix="OPERA"),
+                pd.get_dummies(data["TIPOVUELO"], prefix="TIPOVUELO"),
+                pd.get_dummies(data["MES"], prefix="MES"),
+            ],
+            axis=1,
+        )
+        try:
+            features = features[top_10_features]
+        except KeyError as e:
+            logger.warning(f"defaulting to top 10 features: {e}")
+            if missing := set(TOP_10_FEATURES) - set(features.columns):
+                raise ValueError(f"Missing required columns: {', '.join(missing)}")
+            features = features[TOP_10_FEATURES]
+        return features
+
     def preprocess(
         self, data: pd.DataFrame, target_column: str = None
     ) -> Union[Tuple[pd.DataFrame, pd.DataFrame], pd.DataFrame]:
@@ -68,16 +91,8 @@ class DelayModel:
             or
             pd.DataFrame: features.
         """
-        features = pd.concat(
-            [
-                pd.get_dummies(data["OPERA"], prefix="OPERA"),
-                pd.get_dummies(data["TIPOVUELO"], prefix="TIPOVUELO"),
-                pd.get_dummies(data["MES"], prefix="MES"),
-            ],
-            axis=1,
-        )
-        top_10_features = self._metadata["features"]
-        features = features[top_10_features]
+        top_10_features = self._metadata.get("features", TOP_10_FEATURES)
+        features = self._preprocess(data, top_10_features)
         data["min_diff"] = data.apply(self._get_min_diff, axis=1)
         target_column = self._get_target_delay_column(target_column, data)
         return features, target_column

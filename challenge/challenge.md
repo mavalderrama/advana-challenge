@@ -31,3 +31,5 @@ During the development of this first part I made some changes to original provid
 5. All required tests are passing.
 
 ## Part 2: Deploy the model in an `API` with `FastAPI` using the `api.py` file.
+- This app respects the separation between the business logic and the data models, with that said, the `app/schemas.py` file contains the `Pydantic` models used to validate the input data and the `domain/models/flight.py` file contains the business logic models used pre-process the incoming request data
+- Included the usage of the fastapi `lifespan` event to handle the model persistence at the startup of the app.
