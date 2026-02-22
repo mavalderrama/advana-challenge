@@ -32,9 +32,14 @@ class DelayModel:
         self._model = None  # Model should be saved in this attribute.
         self._root_path = Path(__file__).parent.parent
         model_path = self._root_path / "artifacts" / "lr-flight-delay-model.skops"
-        unknown_types = sio.get_untrusted_types(file=model_path)
-        self._artifact = sio.load(model_path, trusted=unknown_types)
-        self._metadata = self._artifact["metadata"]
+        try:
+            unknown_types = sio.get_untrusted_types(file=model_path)
+            self._artifact = sio.load(model_path, trusted=unknown_types)
+        except FileNotFoundError:
+            logger.warning("Model file not found.")
+            self._artifact = None
+        self._model = self._artifact["pipeline"] if self._artifact else None
+        self._metadata = self._artifact["metadata"] if self._artifact else {}
         self._metadata["features"] = TOP_10_FEATURES
         self._threshold_in_minutes = 15
 
@@ -71,8 +76,9 @@ class DelayModel:
             features = features[top_10_features]
         except KeyError as e:
             logger.warning(f"defaulting to top 10 features: {e}")
-            if missing := set(TOP_10_FEATURES) - set(features.columns):
-                raise ValueError(f"Missing required columns: {', '.join(missing)}")
+            for feature in TOP_10_FEATURES:
+                if feature not in features.columns:
+                    features[feature] = 0
             features = features[TOP_10_FEATURES]
         return features
 
