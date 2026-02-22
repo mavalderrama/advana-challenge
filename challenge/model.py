@@ -1,19 +1,61 @@
 import pandas as pd
 
 from typing import Tuple, Union, List
+import skops.io as sio
+from pathlib import Path
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from datetime import datetime
+import sklearn
+from sklearn.pipeline import Pipeline
+import logging
+
+TOP_10_FEATURES = [
+    "OPERA_Latin American Wings",
+    "MES_7",
+    "MES_10",
+    "OPERA_Grupo LATAM",
+    "MES_12",
+    "TIPOVUELO_I",
+    "MES_4",
+    "MES_11",
+    "OPERA_Sky Airline",
+    "OPERA_Copa Air",
+]
+
+logger = logging.getLogger(__name__)
+
 
 class DelayModel:
+    def __init__(self):
+        self._model = None  # Model should be saved in this attribute.
+        self._root_path = Path(__file__).parent.parent
+        model_path = self._root_path / "artifacts/lr-flight-delay-model.skops"
+        unknown_types = sio.get_untrusted_types(file=model_path)
+        self._artifact = sio.load(model_path, trusted=unknown_types)
+        self._metadata = self._artifact["metadata"]
+        self._metadata["features"] = TOP_10_FEATURES
+        self._threshold_in_minutes = 15
 
-    def __init__(
-        self
-    ):
-        self._model = None # Model should be saved in this attribute.
+    def _get_min_diff(self, data):
+        fecha_o = datetime.strptime(data["Fecha-O"], "%Y-%m-%d %H:%M:%S")
+        fecha_i = datetime.strptime(data["Fecha-I"], "%Y-%m-%d %H:%M:%S")
+        min_diff = ((fecha_o - fecha_i).total_seconds()) / 60
+        return min_diff
+
+    def _get_target_delay_column(
+        self,
+        target_column: str,
+        data: pd.DataFrame,
+    ) -> pd.DataFrame:
+        data[target_column] = np.where(
+            data["min_diff"] > self._threshold_in_minutes, 1, 0
+        )
+        return data[[target_column]]
 
     def preprocess(
-        self,
-        data: pd.DataFrame,
-        target_column: str = None
-    ) -> Union(Tuple[pd.DataFrame, pd.DataFrame], pd.DataFrame):
+        self, data: pd.DataFrame, target_column: str = None
+    ) -> Union[Tuple[pd.DataFrame, pd.DataFrame], pd.DataFrame]:
         """
         Prepare raw data for training or predict.
 
@@ -26,13 +68,21 @@ class DelayModel:
             or
             pd.DataFrame: features.
         """
-        return
+        features = pd.concat(
+            [
+                pd.get_dummies(data["OPERA"], prefix="OPERA"),
+                pd.get_dummies(data["TIPOVUELO"], prefix="TIPOVUELO"),
+                pd.get_dummies(data["MES"], prefix="MES"),
+            ],
+            axis=1,
+        )
+        top_10_features = self._metadata["features"]
+        features = features[top_10_features]
+        data["min_diff"] = data.apply(self._get_min_diff, axis=1)
+        target_column = self._get_target_delay_column(target_column, data)
+        return features, target_column
 
-    def fit(
-        self,
-        features: pd.DataFrame,
-        target: pd.DataFrame
-    ) -> None:
+    def fit(self, features: pd.DataFrame, target: pd.DataFrame) -> None:
         """
         Fit model with preprocessed data.
 
@@ -40,19 +90,68 @@ class DelayModel:
             features (pd.DataFrame): preprocessed data.
             target (pd.DataFrame): target.
         """
-        return
+        target = target["delay"]
+        n_y0 = len(target[target == 0])
+        n_y1 = len(target[target == 1])
+        self._model = Pipeline(
+            [
+                (
+                    "model",
+                    LogisticRegression(
+                        class_weight={1: n_y0 / len(target), 0: n_y1 / len(target)}
+                    ),
+                )
+            ]
+        )
+        self._model.fit(features, target)
+        self.dump_model()
 
-    def predict(
+    def dump_model(self):
+        self._artifact = {
+            "pipeline": self._model,
+            "metadata": {
+                "author": "Manuel Valderrama",
+                "sklearn_version": sklearn.__version__,
+                "features": TOP_10_FEATURES,
+                "accuracy_score": 0.55,
+                "hyperparameters": self._model.named_steps["model"].get_params(),
+            },
+        }
+        sio.dump(
+            self._artifact,
+            self._root_path / "artifacts" / "lr-flight-delay-model.skops",
+        )
+
+    def load(
         self,
-        features: pd.DataFrame
-    ) -> List[int]:
+        model_path: str | None = None,
+    ) -> None:
+        if model_path is None:
+            logger.warning("Model path is not provided. Loading default model.")
+            model_path = self._root_path / "artifacts" / "lr-flight-delay-model.skops"
+        logger.info(f"Loading model from {model_path}")
+        try:
+            unknown_types = sio.get_untrusted_types(file=model_path)
+            self._artifact = sio.load(model_path, trusted=unknown_types)
+            self._metadata = self._artifact["metadata"]
+            self._model = self._artifact["pipeline"]
+        except FileNotFoundError:
+            logger.error(f"Model file not found at {model_path}")
+            raise
+        except Exception as e:
+            logger.error(f"Error loading model: {e}")
+            raise
+
+    def predict(self, features: pd.DataFrame) -> List[int]:
         """
         Predict delays for new flights.
 
         Args:
             features (pd.DataFrame): preprocessed data.
-        
+
         Returns:
             (List[int]): predicted targets.
         """
-        return
+        if self._model is None:
+            raise ValueError("Model is not fitted yet.")
+        return self._model.predict(features).tolist()
