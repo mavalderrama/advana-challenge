@@ -1,7 +1,55 @@
 name: 'Continuous Delivery'
 
 on:
-  ...
+  workflow_run:
+    workflows: ['Continuous Integration']
+    branches: [main]
+    types: [completed]
 
 jobs:
-  ...
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+
+    env:
+      TF_DIR: terraform
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '>= 1.5.0'
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+
+      - name: Compute git SHA
+        id: sha
+        run: echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        run: |
+          REGISTRY=$(cd ${{ env.TF_DIR }} && terraform output -raw artifact_registry_url)
+          SVC_NAME=$(cd ${{ env.TF_DIR }} && terraform output -raw service_name)
+          gcloud auth configure-docker $(echo $REGISTRY | cut -d/ -f1) --quiet
+          docker build --platform linux/amd64 \
+            -t ${REGISTRY}/${SVC_NAME}:${{ steps.sha.outputs.tag }} .
+          docker push ${REGISTRY}/${SVC_NAME}:${{ steps.sha.outputs.tag }}
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -var="image_tag=${{ steps.sha.outputs.tag }}" -auto-approve
