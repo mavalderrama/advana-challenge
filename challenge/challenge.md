@@ -33,3 +33,9 @@ During the development of this first part I made some changes to original provid
 ## Part 2: Deploy the model in an `API` with `FastAPI` using the `api.py` file.
 - This app respects the separation between the business logic and the data models, with that said, the `app/schemas.py` file contains the `Pydantic` models used to validate the input data and the `domain/models/flight.py` file contains the business logic models used pre-process the incoming request data
 - Included the usage of the fastapi `lifespan` event to handle the model persistence at the startup of the app.
+
+## Part 3: Deploy the `API` in your favorite cloud provider (we recomend to use GCP).
+### Infrastructure desicion
+- As suggested I chose to use `GCP` for this challenge, I've decided to go with `Cloud Run` because it is a serverless solution that scales automatically based on the incoming traffic.
+- Decided to go with `terraform` to automate the infrastructure provisioning.
+- Defined the `Dockerfile` and `docker-compose.yml` files to build the docker image and run the app locally.

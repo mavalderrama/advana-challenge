@@ -22,3 +22,10 @@ insecure_report.txt
 reports
 .idea
 .venv
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+terraform/terraform.tfvars

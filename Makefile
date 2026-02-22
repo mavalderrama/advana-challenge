@@ -1,5 +1,6 @@
 .ONESHELL:
 ENV_PREFIX=$(shell python -c "if __import__('pathlib').Path('.venv/bin/pip').exists(): print('.venv/bin/')")
+GIT_SHA := $(shell git rev-parse --short HEAD)
 
 .PHONY: help
 help:             	## Show the help.
@@ -43,3 +44,49 @@ api-test:			## Run tests and coverage
 .PHONY: build
 build:			## Build locally the python artifact
 	python setup.py bdist_wheel
+
+# ---------------------------------------------------------------------------
+# GCP deployment — first deploy:
+#   make bootstrap          (registry → image → Cloud Run)
+#
+# Subsequent releases (image change):
+#   make deploy             (docker-push + tf-deploy with current git SHA)
+# ---------------------------------------------------------------------------
+
+TF_DIR = terraform
+
+.PHONY: tf-init
+tf-init:		## Initialise Terraform (run once)
+	cd $(TF_DIR) && terraform init
+
+.PHONY: tf-registry
+tf-registry:		## Phase 1 — create Artifact Registry (must run before docker-push)
+	cd $(TF_DIR) && terraform apply \
+		-target=google_project_service.run \
+		-target=google_project_service.artifact_registry \
+		-target=google_project_service.iam \
+		-target=google_artifact_registry_repository.images \
+		-target=google_service_account.cloud_run
+
+.PHONY: docker-push
+docker-push:		## Build and push the Docker image (tag: current git SHA)
+	$(eval REGISTRY := $(shell cd $(TF_DIR) && terraform output -raw artifact_registry_url))
+	$(eval SVC_NAME := $(shell cd $(TF_DIR) && terraform output -raw service_name))
+	gcloud auth configure-docker $$(echo $(REGISTRY) | cut -d/ -f1) --quiet
+	docker build --platform linux/amd64 -t $(REGISTRY)/$(SVC_NAME):$(GIT_SHA) .
+	docker push $(REGISTRY)/$(SVC_NAME):$(GIT_SHA)
+
+.PHONY: tf-deploy
+tf-deploy:		## Deploy Cloud Run service with current git SHA image
+	cd $(TF_DIR) && terraform apply -var="image_tag=$(GIT_SHA)"
+
+.PHONY: deploy
+deploy:			## Build, push, and deploy using current git SHA ($(GIT_SHA))
+	$(MAKE) docker-push
+	$(MAKE) tf-deploy
+
+.PHONY: bootstrap
+bootstrap:		## Full first-time deploy: registry → image → Cloud Run
+	$(MAKE) tf-registry
+	$(MAKE) docker-push
+	$(MAKE) tf-deploy

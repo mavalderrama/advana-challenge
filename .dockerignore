@@ -1,0 +1,41 @@
+# Version control
+.git
+.gitignore
+.github/
+
+# Python environment and cache
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# IDE and OS
+.idea/
+.DS_Store
+*.swp
+
+# Dev / test only
+requirements-dev.txt
+requirements-test.txt
+tests/
+reports/
+docs/
+
+# Notebooks and exploration data
+*.ipynb
+data/
+
+# Project documentation and config
+CLAUDE.md
+README.md
+Makefile
+.python-version
+.coveragerc
+
+# Terraform (infrastructure lives outside the container)
+terraform/
