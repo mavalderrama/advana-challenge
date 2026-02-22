@@ -43,3 +43,46 @@ api-test:			## Run tests and coverage
 .PHONY: build
 build:			## Build locally the python artifact
 	python setup.py bdist_wheel
+
+# ---------------------------------------------------------------------------
+# GCP deployment — run these targets in order on first deploy:
+#   1. make tf-registry   (create Artifact Registry)
+#   2. make docker-push   (build and push the image)
+#   3. make tf-deploy     (create Cloud Run service)
+#
+# For subsequent releases (image already exists):
+#   make docker-push && make tf-deploy
+# ---------------------------------------------------------------------------
+
+TF_DIR = terraform
+
+.PHONY: tf-init
+tf-init:		## Initialise Terraform (run once)
+	cd $(TF_DIR) && terraform init
+
+.PHONY: tf-registry
+tf-registry:		## Phase 1 — create Artifact Registry (must run before docker-push)
+	cd $(TF_DIR) && terraform apply \
+		-target=google_project_service.run \
+		-target=google_project_service.artifact_registry \
+		-target=google_project_service.iam \
+		-target=google_artifact_registry_repository.images \
+		-target=google_service_account.cloud_run
+
+.PHONY: docker-push
+docker-push:		## Build and push the Docker image to Artifact Registry
+	$(eval REGISTRY := $(shell cd $(TF_DIR) && terraform output -raw artifact_registry_url))
+	$(eval IMAGE    := $(shell cd $(TF_DIR) && terraform output -raw docker_image_url))
+	gcloud auth configure-docker $(shell cd $(TF_DIR) && terraform output -raw artifact_registry_url | cut -d/ -f1) --quiet
+	docker build --platform linux/amd64 -t $(IMAGE) .
+	docker push $(IMAGE)
+
+.PHONY: tf-deploy
+tf-deploy:		## Phase 2 — deploy Cloud Run service (run after docker-push)
+	cd $(TF_DIR) && terraform apply
+
+.PHONY: bootstrap
+bootstrap:		## Full first-time deploy: registry → image → Cloud Run
+	$(MAKE) tf-registry
+	$(MAKE) docker-push
+	$(MAKE) tf-deploy
