@@ -8,13 +8,12 @@ terraform {
     }
   }
 
-  # Uncomment and configure to store state in GCS (recommended for teams).
-  # Create the bucket manually before running `terraform init`.
-  #
-  # backend "gcs" {
-  #   bucket = "YOUR_TF_STATE_BUCKET"
-  #   prefix = "flight-delay-api/state"
-  # }
+  # State is stored in GCS. Create the bucket manually, then run:
+  #   terraform init -backend-config="bucket=YOUR_TF_STATE_BUCKET"
+  # In CI/CD, pass the bucket via the TF_STATE_BUCKET secret.
+  backend "gcs" {
+    prefix = "flight-delay-api/state"
+  }
 }
 
 provider "google" {

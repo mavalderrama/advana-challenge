@@ -1,7 +1,44 @@
 name: 'Continuous Integration'
 
 on:
-  ...
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
 
 jobs:
-  ...
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: '3.14'
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Run model tests
+        run: |
+          mkdir -p reports
+          uv run pytest \
+            --cov-config=.coveragerc \
+            --cov-report term \
+            --cov-report xml:reports/model-coverage.xml \
+            --junitxml=reports/model-junit.xml \
+            --cov=challenge \
+            tests/model
+
+      - name: Run API tests
+        run: |
+          uv run pytest -vvvv \
+            --cov-config=.coveragerc \
+            --cov-report term \
+            --cov-report xml:reports/api-coverage.xml \
+            --junitxml=reports/api-junit.xml \
+            --cov=challenge \
+            tests/api
