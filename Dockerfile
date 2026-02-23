@@ -35,6 +35,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 ENV PORT=8080
+ENV WORKERS=4
 EXPOSE 8080
 
-CMD exec uvicorn challenge.api:app --host 0.0.0.0 --port ${PORT}
+CMD exec gunicorn challenge.api:app \
+    --bind 0.0.0.0:${PORT} \
+    --workers ${WORKERS} \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --timeout 120 \
+    --keep-alive 5

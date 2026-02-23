@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -163,7 +164,7 @@ class DelayModel:
             logger.error(f"Error loading model: {e}")
             raise
 
-    def predict(self, features: pd.DataFrame) -> List[int]:
+    async def predict(self, features: pd.DataFrame) -> List[int]:
         """
         Predict delays for new flights.
 
@@ -175,4 +176,5 @@ class DelayModel:
         """
         if self._model is None:
             raise ValueError("Model is not fitted yet.")
-        return self._model.predict(features).tolist()
+        result = await asyncio.to_thread(self._model.predict, features)
+        return result.tolist()
