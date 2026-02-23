@@ -50,11 +50,12 @@ async def get_health() -> dict:
 
 @app.post("/predict", status_code=200)
 async def post_predict(request: Request, data: schemas.Prediction) -> dict:
-    flight_data = data.model_dump_json()
-    try:
-        validated_flight_data = flight.Flight.model_validate_json(flight_data)
-    except Exception as e:
-        logger.error(f"Error validating flight data: {e}")
-        return {"predict": [0]}
-    logger.info(f"Predicting for flights: {validated_flight_data.flights}")
-    return {"predict": request.app.state.model.predict(validated_flight_data.flights)}
+    features = flight.preprocess_flights(data)
+    logger.info(f"Predicting for {len(data.flights)} flights")
+    return {"predict": await request.app.state.model.predict(features)}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8080)

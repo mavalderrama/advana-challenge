@@ -11,6 +11,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "scikit-learn>=1.8.0",
     "skops>=0.13.0",
+    "gunicorn>=23.0.0",
     "uvicorn>=0.41.0",
     "xgboost>=3.2.0",
 ]
