@@ -57,4 +57,5 @@ jobs:
             -var="image_tag=${{ steps.sha.outputs.tag }}" \
             -target=google_cloud_run_v2_service.api \
             -target=google_cloud_run_v2_service_iam_member.public_invoker \
+            -refresh=false \
             -auto-approve
