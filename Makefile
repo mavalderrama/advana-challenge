@@ -24,7 +24,7 @@ install:		## Install dependencies
 	pip install -r requirements-test.txt
 	pip install -r requirements.txt
 
-STRESS_URL = http://127.0.0.1:8000 
+STRESS_URL = https://flight-delay-api-frdl3ijkmq-uc.a.run.app
 .PHONY: stress-test
 stress-test:
 	# change stress url to your deployed app 
@@ -70,11 +70,10 @@ tf-registry:		## Phase 1 — create Artifact Registry (must run before docker-pu
 
 .PHONY: docker-push
 docker-push:		## Build and push the Docker image (tag: current git SHA)
-	$(eval REGISTRY := $(shell cd $(TF_DIR) && terraform output -raw artifact_registry_url))
-	$(eval SVC_NAME := $(shell cd $(TF_DIR) && terraform output -raw service_name))
-	gcloud auth configure-docker $$(echo $(REGISTRY) | cut -d/ -f1) --quiet
-	docker build --platform linux/amd64 -t $(REGISTRY)/$(SVC_NAME):$(GIT_SHA) .
-	docker push $(REGISTRY)/$(SVC_NAME):$(GIT_SHA)
+	$(eval IMAGE_BASE := $(shell cd $(TF_DIR) && terraform output -raw docker_image_url | cut -d: -f1))
+	gcloud auth configure-docker $$(echo $(IMAGE_BASE) | cut -d/ -f1) --quiet
+	docker build --platform linux/amd64 -t $(IMAGE_BASE):$(GIT_SHA) .
+	docker push $(IMAGE_BASE):$(GIT_SHA)
 
 .PHONY: tf-deploy
 tf-deploy:		## Deploy Cloud Run service with current git SHA image
