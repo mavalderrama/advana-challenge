@@ -52,4 +52,9 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_DIR }}
-        run: terraform apply -var="image_tag=${{ steps.sha.outputs.tag }}" -auto-approve
+        run: |
+          terraform apply \
+            -var="image_tag=${{ steps.sha.outputs.tag }}" \
+            -target=google_cloud_run_v2_service.api \
+            -target=google_cloud_run_v2_service_iam_member.public_invoker \
+            -auto-approve
