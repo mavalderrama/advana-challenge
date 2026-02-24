@@ -43,3 +43,11 @@ resource "google_service_account" "cloud_run" {
 
   depends_on = [google_project_service.iam]
 }
+
+# Allow the deployer SA (e.g. GitHub Actions) to act as the Cloud Run SA.
+# Required so Terraform can assign the SA to the Cloud Run service.
+resource "google_service_account_iam_member" "deployer_act_as_cloud_run" {
+  service_account_id = google_service_account.cloud_run.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.deployer_service_account}"
+}
