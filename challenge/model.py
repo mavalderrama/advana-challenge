@@ -55,7 +55,7 @@ class DelayModel:
         target_column: str,
         data: pd.DataFrame,
     ) -> pd.DataFrame:
-        data[target_column] = np.where(
+        data.loc[:, target_column] = np.where(
             data["min_diff"] > self._threshold_in_minutes, 1, 0
         )
         return data[[target_column]]
@@ -101,7 +101,8 @@ class DelayModel:
         top_10_features = self._metadata.get("features", TOP_10_FEATURES)
         features = self._preprocess(data, top_10_features)
         if target_column is not None:
-            data["min_diff"] = data.apply(self._get_min_diff, axis=1)
+            data = data.copy()
+            data.loc[:, "min_diff"] = data.apply(self._get_min_diff, axis=1)
             target = self._get_target_delay_column(target_column, data)
             return features, target
         return features

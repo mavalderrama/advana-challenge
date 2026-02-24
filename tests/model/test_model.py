@@ -1,7 +1,7 @@
+import asyncio
 import unittest
 
 import pandas as pd
-import pytest
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 
@@ -27,7 +27,7 @@ class TestModel(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.model = DelayModel()
-        self.data = pd.read_csv(filepath_or_buffer="data/data.csv")
+        self.data = pd.read_csv(filepath_or_buffer="data/data.csv", low_memory=False)
 
     def test_model_preprocess_for_training(self):
         features, target = self.model.preprocess(data=self.data, target_column="delay")
@@ -70,12 +70,11 @@ class TestModel(unittest.TestCase):
         assert report["1"]["recall"] > 0.60
         assert report["1"]["f1-score"] > 0.30
 
-    @pytest.mark.asyncio
-    async def test_model_predict(self):
+    def test_model_predict(self):
         features, target = self.model.preprocess(data=self.data, target_column="delay")
         self.model.fit(features=features, target=target)
 
-        predicted_targets = await self.model.predict(features=features)
+        predicted_targets = asyncio.run(self.model.predict(features=features))
 
         assert isinstance(predicted_targets, list)
         assert len(predicted_targets) == features.shape[0]
