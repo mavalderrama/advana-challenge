@@ -27,7 +27,7 @@ During the development of this first part I made some changes to original provid
 1. Fixed the `get_rate_from_column` function as explained above.
 2. Fixed the `get_period_day` function as explained above.
 3. Modified the `challenge/model.py` by implemented the suggested `preprocess`, `fit` and `predict` functions, also included a `dump_model` and `load` functions to handle the model persistence.
-4. Fixed the `tests/model/test_model.py::test_model_predict` to make it work according to the `DelayModel` class definition. 
+4. Fixed the `tests/model/test_model.py::test_model_predict` to make it work according to the `DelayModel` class definition.
 5. All required tests are passing.
 
 ## Part 2: Deploy the model in an `API` with `FastAPI` using the `api.py` file.
@@ -52,10 +52,10 @@ Changed the `STRESS_URL=https://flight-delay-api-frdl3ijkmq-uc.a.run.app` to poi
 #### Locally
 To deploy using local terraform for the very first time, you should follow the steps below:
 ```bash
-# 1. Authenticate to your GCP account                                                                                                                                                                                                      
-gcloud auth login                                                                                                                                                                                                                        
-gcloud auth application-default login                                                                                                                                                                                                    
-gcloud config set project YOUR_PROJECT_ID 
+# 1. Authenticate to your GCP account
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID
 
 # 2. Init Terraform with the remote state bucket
 make tf-init  # or:

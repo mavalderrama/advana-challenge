@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Final, List, Tuple, Union
+from typing import Final
 
 import numpy as np
 import pandas as pd
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class DelayModel:
-    def __init__(self):
+    def __init__(self) -> None:
         self._model = None  # Model should be saved in this attribute.
         self._root_path = Path(__file__).parent.parent
         model_path = self._root_path / "artifacts" / "lr-flight-delay-model.skops"
@@ -44,7 +44,7 @@ class DelayModel:
         self._metadata["features"] = TOP_10_FEATURES
         self._threshold_in_minutes = 15
 
-    def _get_min_diff(self, data):
+    def _get_min_diff(self, data: pd.Series) -> float:
         fecha_o = datetime.strptime(data["Fecha-O"], "%Y-%m-%d %H:%M:%S")
         fecha_i = datetime.strptime(data["Fecha-I"], "%Y-%m-%d %H:%M:%S")
         min_diff = ((fecha_o - fecha_i).total_seconds()) / 60
@@ -84,8 +84,8 @@ class DelayModel:
         return features
 
     def preprocess(
-        self, data: pd.DataFrame, target_column: str = None
-    ) -> Union[Tuple[pd.DataFrame, pd.DataFrame], pd.DataFrame]:
+        self, data: pd.DataFrame, target_column: str | None = None
+    ) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
         """
         Prepare raw data for training or predict.
 
@@ -100,9 +100,11 @@ class DelayModel:
         """
         top_10_features = self._metadata.get("features", TOP_10_FEATURES)
         features = self._preprocess(data, top_10_features)
-        data["min_diff"] = data.apply(self._get_min_diff, axis=1)
-        target_column = self._get_target_delay_column(target_column, data)
-        return features, target_column
+        if target_column is not None:
+            data["min_diff"] = data.apply(self._get_min_diff, axis=1)
+            target = self._get_target_delay_column(target_column, data)
+            return features, target
+        return features
 
     def fit(self, features: pd.DataFrame, target: pd.DataFrame) -> None:
         """
@@ -128,7 +130,8 @@ class DelayModel:
         self._model.fit(features, target)
         self.dump_model()
 
-    def dump_model(self):
+    def dump_model(self) -> None:
+        assert self._model is not None, "Model must be fitted before dumping."
         self._artifact = {
             "pipeline": self._model,
             "metadata": {
@@ -146,7 +149,7 @@ class DelayModel:
 
     def load(
         self,
-        model_path: str | None = None,
+        model_path: str | Path | None = None,
     ) -> None:
         if model_path is None:
             logger.warning("Model path is not provided. Loading default model.")
@@ -164,7 +167,7 @@ class DelayModel:
             logger.error(f"Error loading model: {e}")
             raise
 
-    async def predict(self, features: pd.DataFrame) -> List[int]:
+    async def predict(self, features: pd.DataFrame) -> list[int]:
         """
         Predict delays for new flights.
 
@@ -177,4 +180,4 @@ class DelayModel:
         if self._model is None:
             raise ValueError("Model is not fitted yet.")
         result = await asyncio.to_thread(self._model.predict, features)
-        return result.tolist()
+        return [int(x) for x in result]
