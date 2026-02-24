@@ -54,19 +54,21 @@ build:			## Build locally the python artifact
 # ---------------------------------------------------------------------------
 
 TF_DIR = terraform
+TF_STATE_BUCKET ?= $(error TF_STATE_BUCKET is not set — export TF_STATE_BUCKET=bucket=latam-tf-state)
 
 .PHONY: tf-init
-tf-init:		## Initialise Terraform (run once)
-	cd $(TF_DIR) && terraform init
+tf-init:		## Initialise Terraform (run once, requires TF_STATE_BUCKET)
+	cd $(TF_DIR) && terraform init -backend-config="bucket=$(TF_STATE_BUCKET)"
 
 .PHONY: tf-registry
-tf-registry:		## Phase 1 — create Artifact Registry (must run before docker-push)
+tf-registry:		## Phase 1 — create Artifact Registry + IAM (must run before docker-push, requires TF_VAR_deployer_service_account)
 	cd $(TF_DIR) && terraform apply \
 		-target=google_project_service.run \
 		-target=google_project_service.artifact_registry \
 		-target=google_project_service.iam \
 		-target=google_artifact_registry_repository.images \
-		-target=google_service_account.cloud_run
+		-target=google_service_account.cloud_run \
+		-target=google_service_account_iam_member.deployer_act_as_cloud_run
 
 .PHONY: docker-push
 docker-push:		## Build and push the Docker image (tag: current git SHA)

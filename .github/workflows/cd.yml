@@ -15,6 +15,7 @@ jobs:
     env:
       TF_DIR: terraform
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_deployer_service_account: ${{ fromJson(secrets.GCP_SA_KEY).client_email }}
 
     steps:
       - uses: actions/checkout@v4

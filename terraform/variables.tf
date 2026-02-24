@@ -56,3 +56,8 @@ variable "request_timeout_seconds" {
   type        = number
   default     = 300
 }
+
+variable "deployer_service_account" {
+  description = "Email of the service account used to deploy (e.g. GitHub Actions SA). Granted iam.serviceAccountUser on the Cloud Run SA so it can configure the service."
+  type        = string
+}
