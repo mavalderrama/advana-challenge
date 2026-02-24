@@ -27,18 +27,25 @@ During the development of this first part I made some changes to original provid
 1. Fixed the `get_rate_from_column` function as explained above.
 2. Fixed the `get_period_day` function as explained above.
 3. Modified the `challenge/model.py` by implemented the suggested `preprocess`, `fit` and `predict` functions, also included a `dump_model` and `load` functions to handle the model persistence.
-4. Fixed the `tests/model/test_model.py::test_model_predict` to make it work according to the `DelayModel` class definition.
-5. All required tests are passing.
+4. Included an `asyncio.to_thread` to handle model prediction in a separate thread to avoid blocking the event loop and to increase predict throughput.
+5. Fixed the `tests/model/test_model.py::test_model_predict` to make it work according to the `DelayModel` class definition.
+6. All required tests are passing.
 
 ## Part 2: Deploy the model in an `API` with `FastAPI` using the `api.py` file.
 - This app respects the separation between the business logic and the data models, with that said, the `app/schemas.py` file contains the `Pydantic` models used to validate the input data and the `domain/models/flight.py` file contains the business logic models used pre-process the incoming request data
 - Included the usage of the fastapi `lifespan` event to handle the model persistence at the startup of the app.
+
+### Hooks and Linters
+- Included the `pre-commit` hooks to run the linters and formatters before committing.
+- Included the `ruff` formatter to ensure consistent code style.
+- Included the `mypy` static type checker to catch type-related errors.
 
 ## Part 3: Deploy the `API` in your favorite cloud provider (we recomend to use GCP).
 ### Infrastructure decision
 - As suggested I chose to use `GCP` for this challenge, I've decided to go with `Cloud Run` because it is a serverless solution that scales automatically based on the incoming traffic.
 - Decided to go with `terraform` to automate the infrastructure provisioning.
 - Defined the `Dockerfile` and `docker-compose.yml` files to build the docker image and run the app locally.
+- The `Dockerfile` included the usage of `gunicorn` with `uvicorn` workers to handle the requests in a production environment.
 
 ### API Stress Test
 For this part I've used the locust config provided in the Makefile.
@@ -69,9 +76,14 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 make deploy   # builds linux/amd64 image → pushes → updates Cloud Run with the new git SHA
 ```
 #### Remote
-Since this project was designed to make use of a CI/CD pipeline, you can clone the repo and push to the `main` branch to trigger the deployment pipeline.
+Since this project was designed to make use of a CI/CD pipeline, you can clone the repo and push to the `main` branch to trigger the deployment pipeline automatically.
 You can find the pipelines definitions at `.github/workflows/ci.yml` and `.github/workflows/cd.yml` files.
 ##### Continuous Integration Pipeline Working
 ![Continuous Integration Pipeline Working](evidence/ci.png)
 ##### Continuous Delivery Pipeline Working
 ![Continuous Delivery Pipeline Working](evidence/cd.png)
+
+
+## Tests
+All tests are passing.
+![All requiered Tests passing](evidence/T1.png)
