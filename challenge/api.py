@@ -1,24 +1,27 @@
-import fastapi
 import logging
-import os
+import sys
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+
+import fastapi
+from fastapi import Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
 from challenge import model
 from challenge.app import schemas
 from challenge.domain.models import flight
-from fastapi.responses import JSONResponse
-from fastapi import Request, status
-from fastapi.exceptions import RequestValidationError
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: fastapi.FastAPI):
+async def lifespan(app: fastapi.FastAPI) -> AsyncGenerator[None]:
     logger.info(
         "Starting LATAM Advana Challenge API.",
         extra={
-            "python_version": os.sys.version,
+            "python_version": sys.version,
         },
     )
     try:
@@ -36,7 +39,9 @@ app = fastapi.FastAPI(
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={},

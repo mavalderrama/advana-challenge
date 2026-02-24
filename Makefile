@@ -25,6 +25,22 @@ install:		## Install dependencies
 	pip install -r requirements.txt
 
 STRESS_URL = https://flight-delay-api-frdl3ijkmq-uc.a.run.app
+.PHONY: lint
+lint:			## Run ruff linter
+	uv run ruff check .
+
+.PHONY: lint-fix
+lint-fix:		## Run ruff linter with auto-fix
+	uv run ruff check --fix .
+
+.PHONY: format
+format:			## Run ruff formatter
+	uv run ruff format .
+
+.PHONY: type-check
+type-check:		## Run mypy type checker
+	uv run mypy challenge
+
 .PHONY: stress-test
 stress-test:
 	# change stress url to your deployed app 
