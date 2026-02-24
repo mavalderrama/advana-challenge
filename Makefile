@@ -41,9 +41,13 @@ format:			## Run ruff formatter
 type-check:		## Run mypy type checker
 	uv run mypy challenge
 
+.PHONY: pre-commit-install
+pre-commit-install:	## Install pre-commit hooks into .git/hooks
+	uv run pre-commit install
+
 .PHONY: stress-test
 stress-test:
-	# change stress url to your deployed app 
+	# change stress url to your deployed app
 	mkdir reports || true
 	locust -f tests/stress/api_stress.py --print-stats --html reports/stress-test.html --run-time 60s --headless --users 100 --spawn-rate 1 -H $(STRESS_URL)
 
