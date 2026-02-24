@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-
+import pytest
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from challenge.model import DelayModel
@@ -68,11 +68,12 @@ class TestModel(unittest.TestCase):
         assert report["1"]["recall"] > 0.60
         assert report["1"]["f1-score"] > 0.30
 
-    def test_model_predict(self):
+    @pytest.mark.asyncio
+    async def test_model_predict(self):
         features, target = self.model.preprocess(data=self.data, target_column="delay")
         self.model.fit(features=features, target=target)
 
-        predicted_targets = self.model.predict(features=features)
+        predicted_targets = await self.model.predict(features=features)
 
         assert isinstance(predicted_targets, list)
         assert len(predicted_targets) == features.shape[0]
