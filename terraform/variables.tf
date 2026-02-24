@@ -36,19 +36,19 @@ variable "min_instance_count" {
 variable "max_instance_count" {
   description = "Maximum number of Cloud Run instances for autoscaling."
   type        = number
-  default     = 10
+  default     = 25
 }
 
 variable "cpu_limit" {
   description = "CPU limit per Cloud Run instance (e.g., '1', '2')."
   type        = string
-  default     = "1"
+  default     = "8"
 }
 
 variable "memory_limit" {
   description = "Memory limit per Cloud Run instance (e.g., '512Mi', '1Gi', '2Gi')."
   type        = string
-  default     = "1Gi"
+  default     = "8Gi"
 }
 
 variable "request_timeout_seconds" {
